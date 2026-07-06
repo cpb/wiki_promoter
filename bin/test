@@ -1,0 +1,36 @@
+#!/bin/bash
+# bin/test — Run test suite with optional file:line filter
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Ensure gems are installed
+bundle check >/dev/null 2>&1 || bundle install --quiet
+
+# Parse file:line syntax (if provided as first argument)
+if [[ $# -gt 0 && "$1" =~ : ]]; then
+  file_and_line="$1"
+  file="${file_and_line%:*}"
+  line="${file_and_line#*:}"
+
+  # Find the nearest test_ method at or before the given line
+  method=$(ruby -e '
+    file, target = ARGV
+    current = nil
+    File.readlines(file).each_with_index do |text, index|
+      break if index + 1 > target.to_i
+      current = Regexp.last_match(1) if text =~ /^\s*def\s+(test_[^\s(]+)/
+    end
+    puts current if current
+  ' "$file" "$line")
+
+  if [[ -n "$method" ]]; then
+    bundle exec ruby -Ilib:test "$file" --name "$method"
+  else
+    bundle exec ruby -Ilib:test "$file"
+  fi
+else
+  # Run full test suite
+  bundle exec rake test "$@"
+fi

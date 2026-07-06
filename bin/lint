@@ -1,0 +1,19 @@
+#!/bin/bash
+# bin/lint — PostToolUse linting hook for changed files
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+export RUBOCOP_CACHE_ROOT="${RUBOCOP_CACHE_ROOT:-tmp/rubocop_cache}"
+
+# If no files provided, run full linter
+if [[ -z "$CLAUDE_FILE_PATHS" ]]; then
+  bundle exec standardrb --fix
+  exit 0
+fi
+
+# Process files from CLAUDE_FILE_PATHS
+bundle exec standardrb --fix $CLAUDE_FILE_PATHS 2>&1 || true
+
+echo "✓ Linting complete"

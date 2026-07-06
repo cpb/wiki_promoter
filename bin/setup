@@ -1,0 +1,12 @@
+#!/bin/bash
+# frozen_string_literal: true
+# bin/setup — Initialize development environment
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Install gems
+bundle install
+
+echo "✓ Setup complete! You can now run 'bundle exec rake' to lint and test."

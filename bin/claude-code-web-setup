@@ -1,0 +1,23 @@
+#!/bin/sh
+# Installs per-tool dependencies before Claude Code tool calls, using receipt
+# files in tmp/claude-web-receipts/ as a fast-path cache so only the first
+# call per session pays installation cost.
+#
+# Only reached in Claude Code web sessions — the hook command in settings.json
+# short-circuits on CLAUDE_CODE_REMOTE != true before exec'ing this script.
+#
+# Does not provision hk: bin/lint calls standardrb directly (same as CI), so
+# remote sessions never need hk installed. hk is local-dev-only, for the git
+# pre-commit hook a human sets up via `hk install` — see the Brewfile.
+set -eu
+
+INPUT=$(cat)
+TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || true)
+
+. "$(dirname "$0")/claude-web-deps.sh"
+
+case "$TOOL_NAME" in
+  Edit|Write)
+    install_gems
+    ;;
+esac

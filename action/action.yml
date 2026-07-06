@@ -1,0 +1,96 @@
+# Composite action that flattens a docs/<issue>-slug research tree, pushes it
+# to the repository's wiki, updates Home.md, repoints the roadmap, and removes
+# the source tree from the PR branch.
+#
+# NOTE: this action performs its OWN checkout of the calling repository into
+# ${{ github.workspace }} (it needs the docs tree and push access to the PR
+# branch). Do not rely on a checkout your workflow ran earlier — this step
+# will reset the workspace to github.ref.
+name: "Migrate Docs to Wiki"
+description: "Flatten, migrate, and sync GitHub Markdown research trees to GitHub Wiki"
+
+inputs:
+  docs_path:
+    description: "Path to the docs/<issue>-<slug> research tree to migrate (required)"
+    required: true
+  wiki_deploy_token:
+    description: "Classic PAT with 'repo' scope for wiki read/write access (required)"
+    required: true
+  wiki_repository:
+    description: "Target wiki repository (e.g. org/repo.wiki, defaults to ${{ github.repository }}.wiki)"
+    required: false
+  roadmap_path:
+    description: "Path to roadmap markdown file for reference repointing (defaults to docs/2026-07-01-roadmap.md)"
+    required: false
+    default: "docs/2026-07-01-roadmap.md"
+  update_home_page:
+    description: "Whether to auto-index the entry page on Home.md (defaults to 'true')"
+    required: false
+    default: "true"
+  entry_page_name:
+    description: "Override for the auto-derived wiki entry page name (optional)"
+    required: false
+  force:
+    description: "Whether to force publishing despite unsupported file types or overwriting different wiki pages (defaults to 'false')"
+    required: false
+    default: "false"
+  pr_number:
+    description: "PR number this branch belongs to; when set, posts a summary comment linking the migrated wiki page (optional)"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Check out repository"
+      uses: "actions/checkout@v4"
+      with:
+        token: ${{ github.token }}
+
+    - name: "Set up Ruby"
+      uses: "ruby/setup-ruby@v1"
+      with:
+        ruby-version: "3.3"
+
+    - name: "Publish docs tree"
+      id: "publish"
+      shell: "bash"
+      env:
+        DOCS_PATH: "${{ inputs.docs_path }}"
+        WIKI_DEPLOY_TOKEN: "${{ inputs.wiki_deploy_token }}"
+        WIKI_REPOSITORY: "${{ inputs.wiki_repository || format('{0}.wiki', github.repository) }}"
+        ROADMAP_PATH: "${{ inputs.roadmap_path }}"
+        UPDATE_HOME_PAGE: "${{ inputs.update_home_page }}"
+        ENTRY_PAGE_NAME: "${{ inputs.entry_page_name }}"
+        WIKI_FORCE: "${{ inputs.force }}"
+        SOURCE_REPOSITORY: "${{ github.repository }}"
+        GITHUB_SERVER_URL: "${{ github.server_url }}"
+        GITHUB_REF_NAME: "${{ github.ref_name }}"
+        WIKI_OUTPUT_DIR: "${{ runner.temp }}/wiki-migration"
+        WIKI_CHECKOUT_DIR: "${{ runner.temp }}/wiki"
+        GIT_USER_NAME: "github-actions[bot]"
+        GIT_USER_EMAIL: "github-actions[bot]@users.noreply.github.com"
+      # action.yml lives in action/, so the gem's lib/ and exe/ are one level
+      # up from github.action_path.
+      run: |
+        cd "${{ github.workspace }}"
+        gem_root="${{ github.action_path }}/.."
+        url="$(ruby -I"${gem_root}/lib" -e 'require "wiki_promoter"; name = ENV["ENTRY_PAGE_NAME"].to_s.empty? ? nil : ENV["ENTRY_PAGE_NAME"]; migrator = WikiPromoter::Migrator.new(ENV.fetch("DOCS_PATH"), entry_page_name: name); entry = migrator.entry_wiki_name.tr(" ", "-"); puts "#{ENV.fetch("GITHUB_SERVER_URL")}/#{ENV.fetch("SOURCE_REPOSITORY")}/wiki/#{entry}"')"
+        ruby -I"${gem_root}/lib" "${gem_root}/exe/wiki-promoter" publish "${DOCS_PATH}"
+        echo "url=${url}" >> "${GITHUB_OUTPUT}"
+
+    - name: "Comment on the PR"
+      if: inputs.pr_number != ''
+      shell: "bash"
+      env:
+        GH_TOKEN: "${{ github.token }}"
+        PR_NUMBER: "${{ inputs.pr_number }}"
+        DOCS_PATH: "${{ inputs.docs_path }}"
+        WIKI_URL: "${{ steps.publish.outputs.url }}"
+      run: |
+        cd "${{ github.workspace }}"
+        gh pr comment "${PR_NUMBER}" --body "Migrated \`${DOCS_PATH}\` to the wiki: ${WIKI_URL}"
+
+outputs:
+  wiki_url:
+    description: "URL to the wiki entry page"
+    value: ${{ steps.publish.outputs.url }}

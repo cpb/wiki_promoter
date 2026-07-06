@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/wiki_promoter"
+
+def print_usage
+  puts "Usage:"
+  puts "  wiki-promoter migrate [--output-dir DIR] [--force] DOCS_PATH"
+  puts "  wiki-promoter publish [--force] DOCS_PATH"
+  puts ""
+  puts "Flattens and relinks a docs/ research tree into GitHub Wiki format."
+  puts "The publish command also syncs the wiki, updates Home.md, repoints roadmap references, and removes the source tree."
+  puts ""
+  puts "Arguments:"
+  puts "  DOCS_PATH          Path to docs/<issue>-<slug> tree to migrate"
+  puts ""
+  puts "Options:"
+  puts "  --output-dir DIR   Output directory (default: tmp/wiki-migration)"
+  puts "  --force, -f        Force publication / migration bypassing validation"
+  puts "  --help             Show this help message"
+end
+
+def main
+  if ARGV.empty? || ARGV.include?("--help")
+    print_usage
+    exit(ARGV.empty? ? 1 : 0)
+  end
+
+  command = ARGV.shift
+  unless %w[migrate publish].include?(command)
+    puts "Unknown command: #{command}"
+    print_usage
+    exit 1
+  end
+
+  output_dir = "tmp/wiki-migration"
+  docs_path = nil
+  force = false
+
+  while ARGV.any?
+    arg = ARGV.shift
+    case arg
+    when "--output-dir"
+      output_dir = ARGV.shift
+      raise ArgumentError, "--output-dir requires a value" unless output_dir
+    when "--force", "-f"
+      force = true
+    when "--help"
+      print_usage
+      exit 0
+    else
+      docs_path = arg
+    end
+  end
+
+  raise ArgumentError, "DOCS_PATH is required" unless docs_path
+
+  begin
+    ENV["WIKI_OUTPUT_DIR"] = output_dir
+    ENV["WIKI_FORCE"] = "true" if force
+
+    if command == "migrate"
+      publisher = WikiPromoter::Publisher.from_env(docs_path)
+      publisher.migrate
+      puts "Migration complete: #{publisher.migrator.pages.size} files written to #{output_dir}/"
+    else
+      result = WikiPromoter::Publisher.from_env(docs_path).publish
+      puts "Publishing complete: #{result.wiki_url}"
+    end
+  rescue ArgumentError => e
+    puts "Error: #{e.message}"
+    print_usage
+    exit 1
+  rescue WikiPromoter::Migrator::CollisionError => e
+    puts "Collision Error: #{e.message}"
+    exit 1
+  rescue => e
+    puts "Error: #{e.message}"
+    puts e.backtrace
+    exit 1
+  end
+end
+
+main if __FILE__ == $0

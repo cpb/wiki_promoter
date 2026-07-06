@@ -1,0 +1,14 @@
+# Ignore bundler artifacts and local config
+/Gemfile.lock
+/pkg/
+/tmp/
+/.env.local
+/.env.local.example
+/.worktree-session.json
+/log/
+/target/
+/Cargo.lock
+# Pre-built gem packages at repo root
+*.gem
+# Internal review / scratch docs
+adversarial_review.md
