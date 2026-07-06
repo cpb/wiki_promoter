@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+begin
+  require "dotenv"
+  Dotenv.load(".env.local")
+rescue LoadError
+  nil
+end
+
 require "bundler/gem_tasks"
 require "rake/testtask"
 
