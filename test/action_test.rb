@@ -41,4 +41,19 @@ class ActionTest < Minitest::Test
     assert File.exist?(exe_path),
       "action.yml executable #{exe_path} does not exist (resolved: #{File.expand_path(exe_path)})"
   end
+
+  # GitHub rejects ${{ }} expressions inside input descriptions and defaults
+  # (they are only valid under runs: env/with/if/run and output values). Such
+  # an expression makes the whole action fail to load with "expressions are not
+  # allowed here" -- which YAML parsing alone does not catch.
+  def test_inputs_contain_no_disallowed_expressions
+    inputs = YAML.safe_load_file(ACTION_YML).fetch("inputs", {})
+    offenders = inputs.flat_map do |name, spec|
+      %w[description default].filter_map do |field|
+        value = spec[field]
+        "inputs.#{name}.#{field}" if value.is_a?(String) && value.include?("${{")
+      end
+    end
+    assert_empty offenders, "action.yml uses ${{ }} where GitHub disallows it: #{offenders.join(", ")}"
+  end
 end

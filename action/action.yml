@@ -17,7 +17,7 @@ inputs:
     description: "Classic PAT with 'repo' scope for wiki read/write access (required)"
     required: true
   wiki_repository:
-    description: "Target wiki repository (e.g. org/repo.wiki, defaults to ${{ github.repository }}.wiki)"
+    description: "Target wiki repository, e.g. org/repo.wiki. Defaults to the current repository's wiki."
     required: false
   roadmap_path:
     description: "Path to roadmap markdown file for reference repointing (defaults to docs/2026-07-01-roadmap.md)"
