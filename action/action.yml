@@ -37,6 +37,9 @@ inputs:
   pr_number:
     description: "PR number this branch belongs to; when set, posts a summary comment linking the migrated wiki page (optional)"
     required: false
+  ref:
+    description: "Branch name to check out and push the cleanup commit to (defaults to the workflow's ref)"
+    required: false
 
 runs:
   using: "composite"
@@ -45,6 +48,7 @@ runs:
       uses: "actions/checkout@v4"
       with:
         token: ${{ github.token }}
+        ref: ${{ inputs.ref || github.ref }}
 
     - name: "Set up Ruby"
       uses: "ruby/setup-ruby@v1"
@@ -64,7 +68,7 @@ runs:
         WIKI_FORCE: "${{ inputs.force }}"
         SOURCE_REPOSITORY: "${{ github.repository }}"
         GITHUB_SERVER_URL: "${{ github.server_url }}"
-        GITHUB_REF_NAME: "${{ github.ref_name }}"
+        GITHUB_REF_NAME: "${{ inputs.ref || github.ref_name }}"
         WIKI_OUTPUT_DIR: "${{ runner.temp }}/wiki-migration"
         WIKI_CHECKOUT_DIR: "${{ runner.temp }}/wiki"
         GIT_USER_NAME: "github-actions[bot]"
