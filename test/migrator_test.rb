@@ -65,9 +65,9 @@ class MigratorTest < Minitest::Test
         "77.a.i. Results Title.md"
       ].sort, pages.keys.sort
 
-      assert_includes pages.fetch("77. Entry Title.md"), "[Research Title](77.a. Research Title)"
-      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.a.i. Results Title#raw-data)"
-      assert_includes pages.fetch("77.a. Research Title.md"), "[Results Title](77.a.i. Results Title)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Research Title](77.a.%20Research%20Title)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.a.i.%20Results%20Title#raw-data)"
+      assert_includes pages.fetch("77.a. Research Title.md"), "[Results Title](77.a.i.%20Results%20Title)"
     end
   end
 
@@ -83,7 +83,7 @@ class MigratorTest < Minitest::Test
 
       # Author wrote "#Section-1.2"; GitHub's heading anchor for "## Section 1.2"
       # is "section-12" (downcased, dot dropped). The slugifier reconciles them.
-      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.1. Results Title#section-12)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.1.%20Results%20Title#section-12)"
     end
   end
 
@@ -106,6 +106,13 @@ class MigratorTest < Minitest::Test
       assert_includes content, "[duckling](https://github.com/wafer-inc/duckling)"
       assert_includes content, "[fake link](other.md)"
     end
+  end
+
+  def test_encode_wiki_link_target_handles_reserved_characters
+    assert_equal "1.a.%20Page", WikiPromoter.encode_wiki_link_target("1.a. Page")
+    assert_equal "1.%20Fix%20%2312%20rollout%20%2850%25%20coverage%29",
+      WikiPromoter.encode_wiki_link_target("1. Fix #12 rollout (50% coverage)")
+    assert_equal "77.a.%20A%20&%20B", WikiPromoter.encode_wiki_link_target("77.a. A & B")
   end
 
   def test_check_collisions_raises_when_two_sources_flatten_to_the_same_name
@@ -230,14 +237,14 @@ class MigratorTest < Minitest::Test
     ].sort, pages.keys.sort
 
     entry = pages.fetch("77. Spike does rb_nogvl + RB_NOGVL_OFFLOAD_SAFE obviate the Thread wrapper.md")
-    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike)"
-    assert_includes entry, "[Raw experiment data](77.a.i. Raw experiment data)"
-    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike#two-track-methodology)"
+    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a.%20Research%20rb_nogvl%20+%20RB_NOGVL_OFFLOAD_SAFE%20mechanism%20spike)"
+    assert_includes entry, "[Raw experiment data](77.a.i.%20Raw%20experiment%20data)"
+    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a.%20Research%20rb_nogvl%20+%20RB_NOGVL_OFFLOAD_SAFE%20mechanism%20spike#two-track-methodology)"
     # External permalinks must survive untouched
     assert_includes entry, "https://github.com/cpb/duckling/blob/main/ext/duckling/src/lib.rs"
     assert_includes entry, "https://github.com/cpb/duckling/wiki/research-async-reactor-blocking"
 
     research = pages.fetch("77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike.md")
-    assert_includes research, "[Raw experiment data](77.a.i. Raw experiment data)"
+    assert_includes research, "[Raw experiment data](77.a.i.%20Raw%20experiment%20data)"
   end
 end

@@ -119,6 +119,9 @@ module WikiPromoter
       raise ArgumentError, "wiki_repository required to publish" if blank?(@wiki_repository)
       raise ArgumentError, "wiki_deploy_token required to publish" if blank?(@wiki_deploy_token)
 
+      # Prevent git from prompting for credentials on a local TTY and hanging.
+      ENV["GIT_TERMINAL_PROMPT"] = "0"
+
       pages = migrate
       configure_git(".")
       clone_or_update_wiki
@@ -179,11 +182,18 @@ module WikiPromoter
 
     def clone_or_update_wiki
       if Dir.exist?(File.join(wiki_checkout, ".git"))
+        # Re-point origin to the current clone_url so a rotated token takes
+        # effect on an existing checkout (the origin URL is frozen at first
+        # clone and credential helpers are disabled).
+        run("git", "-C", wiki_checkout, "remote", "set-url", "origin", clone_url)
         run("git", "-C", wiki_checkout, "fetch", "origin")
         run("git", "-C", wiki_checkout, "reset", "--hard", "origin/#{@wiki_branch}")
       else
         FileUtils.mkdir_p(File.dirname(wiki_checkout))
-        run("git", "clone", clone_url, wiki_checkout)
+        # Disable credential helpers for the initial clone only; subsequent
+        # fetch/push are covered by configure_git(wiki_checkout) which sets
+        # credential.helper to empty in the local config.
+        run("git", "-c", "credential.helper=", "clone", clone_url, wiki_checkout)
         run("git", "-C", wiki_checkout, "checkout", "-B", @wiki_branch, "origin/#{@wiki_branch}")
       end
     end
@@ -195,6 +205,10 @@ module WikiPromoter
       run("git", "-C", repository_path, "config", "user.email", @git_user_email)
       run("git", "-C", repository_path, "config", "commit.gpgsign", "false")
       run("git", "-C", repository_path, "config", "tag.gpgsign", "false")
+      # Disable credential helpers in the wiki checkout so the token embedded
+      # in the clone URL is used instead of system helpers (osxkeychain, gh)
+      # that may supply different credentials and cause a 403 on push.
+      run("git", "-C", repository_path, "config", "credential.helper", "")
     end
 
     def copy_all_files_to_wiki
@@ -264,15 +278,21 @@ module WikiPromoter
       new_section = <<~SECTION
         #{heading}
 
-        **Migrated to the wiki.** See [#{entry_h1}](#{entry_wiki_name}) for the full research.
+        **Migrated to the wiki.** See [#{entry_h1}](#{WikiPromoter.encode_wiki_link_target(entry_wiki_name)}) for the full research.
 
       SECTION
 
       home = File.read(home_path)
-      anchor = "## Settled Decisions"
-      return if home.include?(heading) || !home.include?(anchor)
+      return if home.include?(heading)
 
-      File.write(home_path, home.sub(anchor, new_section + anchor))
+      anchor = "## Settled Decisions"
+      if home.include?(anchor)
+        File.write(home_path, home.sub(anchor, new_section + anchor))
+      else
+        # No anchor heading — append the entry and create the anchor so
+        # future entries insert above it and the layout converges.
+        File.write(home_path, home.sub(/\n*\z/, "\n\n") + new_section + anchor)
+      end
       run("git", "-C", wiki_checkout, "add", "Home.md")
     end
 

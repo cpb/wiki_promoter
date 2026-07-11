@@ -48,7 +48,7 @@ class CliIntegrationTest < Minitest::Test
 
       # Verify link rewriting in the migrated file
       main_content = File.read(File.join(output_dir, "81. Main Title.md"))
-      assert_includes main_content, "Link to [Research Findings](81.a.i. Research Findings)"
+      assert_includes main_content, "Link to [Research Findings](81.a.i.%20Research%20Findings)"
     end
   end
 
