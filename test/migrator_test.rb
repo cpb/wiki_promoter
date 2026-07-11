@@ -65,9 +65,9 @@ class MigratorTest < Minitest::Test
         "77.a.i. Results Title.md"
       ].sort, pages.keys.sort
 
-      assert_includes pages.fetch("77. Entry Title.md"), "[Research Title](77.a. Research Title)"
-      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.a.i. Results Title#raw-data)"
-      assert_includes pages.fetch("77.a. Research Title.md"), "[Results Title](77.a.i. Results Title)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Research Title](77.a.%20Research%20Title)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.a.i.%20Results%20Title#raw-data)"
+      assert_includes pages.fetch("77.a. Research Title.md"), "[Results Title](77.a.i.%20Results%20Title)"
     end
   end
 
@@ -83,7 +83,7 @@ class MigratorTest < Minitest::Test
 
       # Author wrote "#Section-1.2"; GitHub's heading anchor for "## Section 1.2"
       # is "section-12" (downcased, dot dropped). The slugifier reconciles them.
-      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.1. Results Title#section-12)"
+      assert_includes pages.fetch("77. Entry Title.md"), "[Results Title](77.1.%20Results%20Title#section-12)"
     end
   end
 
@@ -230,14 +230,14 @@ class MigratorTest < Minitest::Test
     ].sort, pages.keys.sort
 
     entry = pages.fetch("77. Spike does rb_nogvl + RB_NOGVL_OFFLOAD_SAFE obviate the Thread wrapper.md")
-    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike)"
-    assert_includes entry, "[Raw experiment data](77.a.i. Raw experiment data)"
-    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike#two-track-methodology)"
+    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a.%20Research%20rb_nogvl%20+%20RB_NOGVL_OFFLOAD_SAFE%20mechanism%20spike)"
+    assert_includes entry, "[Raw experiment data](77.a.i.%20Raw%20experiment%20data)"
+    assert_includes entry, "[Research: `rb_nogvl` + `RB_NOGVL_OFFLOAD_SAFE` mechanism spike](77.a.%20Research%20rb_nogvl%20+%20RB_NOGVL_OFFLOAD_SAFE%20mechanism%20spike#two-track-methodology)"
     # External permalinks must survive untouched
     assert_includes entry, "https://github.com/cpb/duckling/blob/main/ext/duckling/src/lib.rs"
     assert_includes entry, "https://github.com/cpb/duckling/wiki/research-async-reactor-blocking"
 
     research = pages.fetch("77.a. Research rb_nogvl + RB_NOGVL_OFFLOAD_SAFE mechanism spike.md")
-    assert_includes research, "[Raw experiment data](77.a.i. Raw experiment data)"
+    assert_includes research, "[Raw experiment data](77.a.i.%20Raw%20experiment%20data)"
   end
 end

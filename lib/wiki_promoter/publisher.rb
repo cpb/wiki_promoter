@@ -179,11 +179,11 @@ module WikiPromoter
 
     def clone_or_update_wiki
       if Dir.exist?(File.join(wiki_checkout, ".git"))
-        run("git", "-C", wiki_checkout, "fetch", "origin")
+        run("git", "-C", wiki_checkout, "-c", "credential.helper=", "fetch", "origin")
         run("git", "-C", wiki_checkout, "reset", "--hard", "origin/#{@wiki_branch}")
       else
         FileUtils.mkdir_p(File.dirname(wiki_checkout))
-        run("git", "clone", clone_url, wiki_checkout)
+        run("git", "-c", "credential.helper=", "clone", clone_url, wiki_checkout)
         run("git", "-C", wiki_checkout, "checkout", "-B", @wiki_branch, "origin/#{@wiki_branch}")
       end
     end
@@ -264,15 +264,27 @@ module WikiPromoter
       new_section = <<~SECTION
         #{heading}
 
-        **Migrated to the wiki.** See [#{entry_h1}](#{entry_wiki_name}) for the full research.
+        **Migrated to the wiki.** See [#{entry_h1}](#{entry_wiki_name.gsub(" ", "%20")}) for the full research.
 
       SECTION
 
       home = File.read(home_path)
-      anchor = "## Settled Decisions"
-      return if home.include?(heading) || !home.include?(anchor)
+      return if home.include?(heading)
 
-      File.write(home_path, home.sub(anchor, new_section + anchor))
+      anchor = "## Settled Decisions"
+      if home.include?(anchor)
+        File.write(home_path, home.sub(anchor, new_section + anchor))
+      else
+        # No anchor heading — append the entry at the end of Home.md
+        separator = if home.end_with?("\n\n")
+          ""
+        elsif home.end_with?("\n")
+          "\n"
+        else
+          "\n\n"
+        end
+        File.write(home_path, home + separator + new_section)
+      end
       run("git", "-C", wiki_checkout, "add", "Home.md")
     end
 
@@ -280,7 +292,7 @@ module WikiPromoter
       return unless staged_changes?(wiki_checkout)
 
       run("git", "-C", wiki_checkout, "commit", "-m", "Migrate #{docs_path} research to the wiki")
-      run("git", "-C", wiki_checkout, "push", "origin", "HEAD:#{@wiki_branch}")
+      run("git", "-C", wiki_checkout, "-c", "credential.helper=", "push", "origin", "HEAD:#{@wiki_branch}")
     end
 
     def verify_source_push_access

@@ -132,7 +132,7 @@ class PublisherTest < Minitest::Test
       child_page = File.join(wiki_verify, "77.a.i. Results Title.md")
       assert File.exist?(entry_page)
       assert File.exist?(child_page)
-      assert_includes File.read(entry_page), "[Results Title](77.a.i. Results Title)"
+      assert_includes File.read(entry_page), "[Results Title](77.a.i.%20Results%20Title)"
       assert_includes File.read(File.join(wiki_verify, "Home.md")), "## Issue #77 — Entry Title"
 
       git("clone", "--branch", "feature", source_bare, source_verify, chdir: dir)
