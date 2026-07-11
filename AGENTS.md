@@ -141,6 +141,7 @@ Defined in `lib/wiki_promoter/tasks.rb`:
 - **Current version**: 0.1.0 (initial release)
 - **CHANGELOG**: Keep a Changelog format in `CHANGELOG.md`
 - **Release workflow**: `.github/workflows/release.yml` triggers on `v*` tags. It builds the gem, publishes to RubyGems, and creates a GitHub Release (via `gh release create --generate-notes`). The GitHub Release is required so Dependabot's `github-actions` ecosystem can resolve downstream SHA pins to a version — tags alone are not enough.
+- **Local `release` rake task**: Narrowed to tagging only. `bundler/gem_tasks`'s default `release` builds and pushes the `.gem` itself, which would race the tag-triggered CI pipeline. The local task is cleared and redefined to depend only on `release:guard_clean` and `release:source_control_push` (create the tag and push it); the pushed tag then triggers `release.yml`, which does the actual build, RubyGems publish, and GitHub Release. So: `bundle exec rake release` tags and pushes — do **not** `gem push` locally.
 
 ## Code comment conventions
 
@@ -148,11 +149,20 @@ Comments explain the **durable why** — invariants, constraints, measured behav
 
 ## Keeping this file current
 
-When you land a PR that changes:
+AGENTS.md is the source of truth for how this project is built, tested,
+released, and automated. It must stay in sync with reality. When you land a
+PR that changes any of the following, include a corresponding AGENTS.md
+update in that same PR:
 
-- Directory layout (new top-level dirs, moved files)
-- Build/test commands (`bin/` scripts, Rakefile tasks)
-- Core functionality or API
-- Release process
+- **Directory layout** — new top-level dirs, moved/renamed files, new entrypoints
+- **Build & test commands** — `bin/` scripts, Rakefile tasks, default task composition, test runner changes
+- **Core functionality or API** — public methods, CLI flags, Rake task signatures, the composite Action's inputs/outputs
+- **Release process** — versioning, the `release.yml` workflow, the local `release` rake task, RubyGems/GitHub Release mechanics
+- **CI/CD & automation** — any `.github/workflows/*.yml`, composite Action wiring, Dependabot/secret/permission changes
+- **Developer experience (devex)** — local tooling, environment setup (`bin/setup`, `.env.sample`), lint/format config, git hooks, helper scripts
+- **Architecture** — gem structure, module boundaries, new top-level classes/modules, data flow between components
+- **Dependencies** — meaningful additions/removals/version constraints in `Gemfile`/`wiki_promoter.gemspec` that affect how the project is built or run
 
-Propose an update to AGENTS.md as part of that PR so this stays in sync with reality.
+If a change spans multiple categories, update every affected section. When in
+doubt, update — a stale AGENTS.md is worse than a verbose one. The reviewer
+should be able to treat AGENTS.md as authoritative without reading the diff.
