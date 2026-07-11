@@ -55,6 +55,10 @@ bundle exec rake wiki:publish[docs/77-your-tree]
 `ROADMAP_PATH`, `UPDATE_HOME_PAGE`, `SOURCE_REPOSITORY`, `WIKI_FORCE`,
 `WIKI_BRANCH`, `WIKI_OUTPUT_DIR`, and `WIKI_CHECKOUT_DIR`.
 
+`WIKI_DEPLOY_TOKEN` must be a classic GitHub PAT with `repo` scope — the
+default `GITHUB_TOKEN` cannot push to a repository's wiki. See
+[Local secrets](#local-secrets) for running this locally via `.env.local`.
+
 ### Ruby API
 
 ```ruby
@@ -71,6 +75,18 @@ pages = migrator.pages  # => {"77. Title.md" => "content", ...}
 ```bash
 bin/setup
 ```
+
+### Local secrets
+
+Copy `.env.sample` to `.env.local` (gitignored) and fill in real values:
+
+```bash
+cp .env.sample .env.local
+```
+
+`bundle exec rake` loads `.env.local` automatically via `dotenv`, so tasks
+like `wiki:publish` can pick up `WIKI_DEPLOY_TOKEN` without exporting it by
+hand. See `.env.sample` for what each variable is for.
 
 ### Running Tests
 
@@ -89,6 +105,29 @@ bundle exec standardrb
 ```bash
 bundle exec standardrb --fix
 ```
+
+### Releasing
+
+Releases publish to [rubygems.org](https://rubygems.org) via
+`.github/workflows/release.yml`, which runs on any pushed `v*` tag.
+
+**One-time setup:**
+
+1. Create (or use an existing) [rubygems.org](https://rubygems.org) account.
+2. Under [Profile → API Keys](https://rubygems.org/profile/edit), create a key
+   scoped to "Push rubygem" (optionally restricted to the `wiki_promoter`
+   gem).
+3. Add it as a GitHub Actions repo secret named `RUBYGEMS_API_KEY`:
+   `gh secret set RUBYGEMS_API_KEY --repo cpb/wiki_promoter`, or via
+   **Settings → Secrets and variables → Actions**.
+
+**Cutting a release:**
+
+1. Bump the version in `lib/wiki_promoter/version.rb`.
+2. Update `CHANGELOG.md`.
+3. Commit, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+4. The `release` workflow builds the gem and runs `gem push` using the
+   `RUBYGEMS_API_KEY` secret — no manual `gem push` needed.
 
 ## Docs Structure Conventions
 
