@@ -108,6 +108,13 @@ class MigratorTest < Minitest::Test
     end
   end
 
+  def test_encode_wiki_link_target_handles_reserved_characters
+    assert_equal "1.a.%20Page", WikiPromoter.encode_wiki_link_target("1.a. Page")
+    assert_equal "1.%20Fix%20%2312%20rollout%20%2850%25%20coverage%29",
+      WikiPromoter.encode_wiki_link_target("1. Fix #12 rollout (50% coverage)")
+    assert_equal "77.a.%20A%20&%20B", WikiPromoter.encode_wiki_link_target("77.a. A & B")
+  end
+
   def test_check_collisions_raises_when_two_sources_flatten_to_the_same_name
     Dir.mktmpdir do |dir|
       tree = File.join(dir, "1-slug")

@@ -247,7 +247,7 @@ module WikiPromoter
           wiki_name = wiki_names[rel_target]
           next match unless wiki_name
 
-          "[#{titles[rel_target] || text}](#{wiki_name.gsub(" ", "%20")}#{anchor})"
+          "[#{titles[rel_target] || text}](#{WikiPromoter.encode_wiki_link_target(wiki_name)}#{anchor})"
         end
       end.join
     end

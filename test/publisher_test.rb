@@ -50,6 +50,36 @@ class PublisherTest < Minitest::Test
     end
   end
 
+  def test_add_home_index_entry_appends_when_no_settled_decisions_anchor
+    Dir.mktmpdir do |dir|
+      tree = File.join(dir, "77-slug")
+      output_dir = File.join(dir, "wiki-migration")
+      wiki_checkout = File.join(dir, "wiki")
+      commands = []
+      write_tree(tree, {"README.md" => "# Entry Title\n"})
+      FileUtils.mkdir_p(wiki_checkout)
+      File.write(File.join(wiki_checkout, "Home.md"), "Welcome to the wiki!\n")
+
+      publisher = WikiPromoter::Publisher.new(
+        docs_path: tree,
+        wiki_repository: "example/project",
+        wiki_deploy_token: "token",
+        output_dir: output_dir,
+        wiki_checkout: wiki_checkout,
+        command_runner: ->(cmd) { commands << cmd }
+      )
+      publisher.migrate
+      publisher.send(:add_home_index_entry)
+
+      home = File.read(File.join(wiki_checkout, "Home.md"))
+      assert_includes home, "## Issue #77 — Entry Title"
+      assert_includes home, "## Settled Decisions"
+      # The entry must come before the anchor so future entries insert above it
+      assert home.index("## Issue #77 — Entry Title") < home.index("## Settled Decisions")
+      assert_includes commands, ["git", "-C", wiki_checkout, "add", "Home.md"]
+    end
+  end
+
   def test_add_home_index_entry_inserts_before_settled_decisions
     Dir.mktmpdir do |dir|
       tree = File.join(dir, "77-slug")
