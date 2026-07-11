@@ -44,6 +44,7 @@
 - **`bin/lint`** — Runs `bundle exec standardrb --fix` on changed files (PostToolUse hook).
 - **`bundle exec rake`** — Default task runs: `standard` (lint) → `test` (unit tests).
 - **`bundle exec rake test`** — Runs Minitest suite.
+- **`bundle exec rake release`** — Creates the `vX.Y.Z` tag and pushes it (does **not** build or push the gem). The pushed tag triggers `release.yml`, which does the build, RubyGems publish, and GitHub Release.
 
 ## Core functionality
 
@@ -140,8 +141,8 @@ Defined in `lib/wiki_promoter/tasks.rb`:
 - **Versioning**: SemVer in `lib/wiki_promoter/version.rb`
 - **Current version**: 0.1.0 (initial release)
 - **CHANGELOG**: Keep a Changelog format in `CHANGELOG.md`
-- **Release workflow**: `.github/workflows/release.yml` triggers on `v*` tags. It builds the gem, publishes to RubyGems, and creates a GitHub Release (via `gh release create --generate-notes`). The GitHub Release is required so Dependabot's `github-actions` ecosystem can resolve downstream SHA pins to a version — tags alone are not enough.
-- **Local `release` rake task**: Narrowed to tagging only. `bundler/gem_tasks`'s default `release` builds and pushes the `.gem` itself, which would race the tag-triggered CI pipeline. The local task is cleared and redefined to depend only on `release:guard_clean` and `release:source_control_push` (create the tag and push it); the pushed tag then triggers `release.yml`, which does the actual build, RubyGems publish, and GitHub Release. So: `bundle exec rake release` tags and pushes — do **not** `gem push` locally.
+- **Release workflow**: `.github/workflows/release.yml` triggers on `v*` tags. It creates the GitHub Release **first** (before the gem publish), so the Dependabot invariant — a shipped version always has a Release — holds even if `gem push` fails. The release step is idempotent (`gh release create … || gh release edit …`) so re-runs update rather than hard-fail. Notes are extracted from the matching `## [X.Y.Z]` section of `CHANGELOG.md` (curated, Keep a Changelog), not GitHub's auto-generated PR list. The GitHub Release is required so Dependabot's `github-actions` ecosystem can resolve downstream SHA pins to a version — tags alone are not enough.
+- **Local `release` rake task**: Narrowed to tagging only. `bundler/gem_tasks`'s default `release` builds and pushes the `.gem` itself, which would race the tag-triggered CI pipeline. The local task is cleared (guarded by `task_defined?`) and redefined to depend only on `release:guard_clean` and `release:source_control_push` (create the tag and push it); the pushed tag then triggers `release.yml`. So: `bundle exec rake release` tags and pushes — do **not** `gem push` locally. Tradeoff: there is no local emergency gem-publish escape hatch; CI is the only publish path, so cutting a release requires a working `release.yml` run.
 
 ## Code comment conventions
 

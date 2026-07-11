@@ -14,6 +14,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Dependabot's github-actions ecosystem resolves SHA pins to versions via
+      # GitHub Releases (not tags alone). Create the Release BEFORE the gem
+      # publish so the Dependabot invariant (a shipped version always has a
+      # Release) holds even if `gem push` fails — a missing Release is the
+      # exact broken state we're guarding against. The tag already exists
+      # (it triggered this workflow), so the Release can be created up front.
+      # Create-or-edit makes the step idempotent: a re-run updates rather than
+      # hard-failing on "release already exists". Notes are pulled from the
+      # curated CHANGELOG.md (Keep a Changelog) instead of GitHub's
+      # auto-generated PR list.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          notes="$(awk -v v="$ver" '
+            $0 ~ "^## \\[" v "\\]" { f=1; print; next }
+            f && $0 ~ "^## \\[" { exit }
+            f { print }
+          ' CHANGELOG.md)"
+          [ -n "$notes" ] || notes="Release ${GITHUB_REF_NAME}. See CHANGELOG.md."
+          gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "$notes" \
+            || gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "$notes"
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
@@ -30,14 +54,3 @@ jobs:
           printf -- "---\n:rubygems_api_key: %s\n" "${RUBYGEMS_API_KEY}" > ~/.gem/credentials
           chmod 0600 ~/.gem/credentials
           gem push pkg/*.gem
-
-      # Dependabot's github-actions ecosystem resolves SHA pins to versions via
-      # GitHub Releases (not tags alone). Creating a Release for every v* tag
-      # keeps downstream SHA-pinned consumers auto-bumpable.
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "${GITHUB_REF_NAME}" \
-            --generate-notes
