@@ -1,0 +1,34 @@
+name: promote-wiki
+
+on:
+  workflow_dispatch:
+    inputs:
+      docs_path:
+        description: "Path to the docs tree to promote (e.g. docs/3-action-dogfood)"
+        required: true
+      ref:
+        description: "Branch to promote from (e.g. docs/3-action-dogfood)"
+        required: true
+      force:
+        description: "Overwrite existing wiki pages (default true)"
+        required: false
+        default: "true"
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      # Checkout so ./action is resolvable; the action does its own checkout too
+      - uses: actions/checkout@v4
+
+      - uses: ./action
+        with:
+          docs_path: ${{ inputs.docs_path }}
+          wiki_deploy_token: ${{ secrets.WIKI_DEPLOY_TOKEN }}
+          wiki_repository: cpb/wiki_promoter.wiki
+          ref: ${{ inputs.ref }}
+          force: ${{ inputs.force }}
