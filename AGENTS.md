@@ -140,6 +140,7 @@ Defined in `lib/wiki_promoter/tasks.rb`:
 - **Versioning**: SemVer in `lib/wiki_promoter/version.rb`
 - **Current version**: 0.1.0 (initial release)
 - **CHANGELOG**: Keep a Changelog format in `CHANGELOG.md`
+- **Release workflow**: `.github/workflows/release.yml` triggers on `v*` tags. It builds the gem, publishes to RubyGems, and creates a GitHub Release (via `gh release create --generate-notes`). The GitHub Release is required so Dependabot's `github-actions` ecosystem can resolve downstream SHA pins to a version — tags alone are not enough.
 
 ## Code comment conventions
 
